@@ -1,56 +1,38 @@
 # 🛡️ Wazuh — Módulos de Seguridad
 
-> Documentación de los módulos de seguridad implementados en el entorno Wazuh SIEM para la detección, monitoreo y análisis de amenazas en endpoints.
+> Documentación de los módulos de seguridad del entorno Wazuh SIEM orientados a la detección y monitoreo de amenazas en endpoints.
 
 ---
 
 ## 📋 Tabla de Contenidos
 
 - [Descripción General](#descripción-general)
-- [Módulos Implementados](#módulos-implementados)
+- [Módulos](#módulos)
   - [Malware Detection](#-malware-detection)
   - [File Integrity Monitoring](#-file-integrity-monitoring)
   - [Vulnerability Detection](#-vulnerability-detection)
 - [Requisitos](#requisitos)
-- [Estructura del Repositorio](#estructura-del-repositorio)
+- [Referencias](#referencias)
 
 ---
 
 ## Descripción General
 
-Este repositorio documenta la configuración y uso de los módulos de seguridad del agente Wazuh desplegado sobre endpoints Windows y Linux. Los módulos cubren tres áreas clave de la seguridad defensiva: detección de malware, integridad de archivos y detección de vulnerabilidades.
+Wazuh es una plataforma de seguridad open source que permite monitorear, detectar y responder ante amenazas en tiempo real. Este repositorio documenta tres de sus módulos principales enfocados en la seguridad de endpoints: detección de malware, integridad de archivos y detección de vulnerabilidades.
+
+Cada módulo opera a través del agente Wazuh instalado en el endpoint, que recopila información y la envía al servidor para su análisis y generación de alertas en el Dashboard.
 
 ---
 
-## Módulos Implementados
+## Módulos
 
 ### 🦠 Malware Detection
 
 **Check indicators of compromise triggered by malware infections or cyberattacks.**
 
-Detecta indicadores de compromiso (IOCs) en el sistema, generando alertas ante comportamientos asociados a infecciones por malware o ataques activos.
+Detecta indicadores de compromiso (IOCs) en el sistema. Analiza logs, eventos y comportamientos del endpoint comparándolos con reglas de detección y feeds de inteligencia de amenazas. Cuando identifica actividad sospechosa relacionada con malware o un ataque en curso, genera una alerta clasificada por nivel de severidad.
 
-#### ¿Qué detecta?
-
-| Indicador | Descripción |
-|-----------|-------------|
-| Procesos sospechosos | Ejecución de binarios anómalos o en rutas inusuales |
-| Conexiones de red | Comunicaciones hacia IPs/dominios maliciosos conocidos |
-| Archivos maliciosos | Hashes de ficheros presentes en bases de datos de amenazas |
-| Modificaciones del registro | Cambios en claves de persistencia en Windows |
-| Comportamiento anómalo | Actividad fuera del patrón esperado del sistema |
-
-#### Funcionamiento
-
-Wazuh analiza los logs del sistema y los eventos de seguridad comparándolos con reglas predefinidas y feeds de inteligencia de amenazas. Cuando se detecta un IOC, se genera una alerta clasificada por nivel de severidad (0–15).
-
-#### Niveles de alerta relevantes
-
-```
-Nivel  7 – 11 : Medium   → Actividad sospechosa, requiere revisión
-Nivel 12 – 14 : High     → Posible compromiso activo
-Nivel 15+     : Critical → Atención inmediata requerida
-```
+Es útil para identificar infecciones activas, movimientos laterales, accesos no autorizados y cualquier comportamiento que se desvíe del patrón normal del sistema.
 
 ---
 
@@ -58,44 +40,9 @@ Nivel 15+     : Critical → Atención inmediata requerida
 
 **Alerts related to file changes, including permissions, content, ownership, and attributes.**
 
-Monitorea en tiempo real los cambios realizados sobre archivos y directorios críticos del sistema, detectando modificaciones no autorizadas.
+Monitorea en tiempo real archivos y directorios del sistema, alertando ante cualquier modificación no autorizada. Registra cambios en el contenido, permisos, propietario y atributos de los ficheros vigilados.
 
-#### ¿Qué monitorea?
-
-| Atributo | Descripción |
-|----------|-------------|
-| Contenido | Cambios en el contenido del archivo (hash MD5/SHA1/SHA256) |
-| Permisos | Modificaciones en los permisos de lectura, escritura o ejecución |
-| Propietario | Cambios en el usuario o grupo propietario del archivo |
-| Atributos | Modificación de metadatos del sistema de archivos |
-| Creación / Eliminación | Nuevos archivos creados o archivos eliminados en rutas vigiladas |
-
-#### Rutas monitoreadas por defecto
-
-```
-# Linux
-/etc
-/usr/bin
-/usr/sbin
-/bin
-/sbin
-
-# Windows
-C:\Windows\System32
-C:\Windows\SysWOW64
-C:\Program Files
-```
-
-#### Ejemplo de alerta generada
-
-```
-Rule ID  : 550
-Level    : 7
-Category : ossec
-Message  : Integrity checksum changed for: /etc/passwd
-           Old md5sum: a1b2c3...
-           New md5sum: d4e5f6...
-```
+Es especialmente útil para detectar manipulaciones en archivos críticos del sistema operativo, cambios introducidos por atacantes tras una intrusión, o modificaciones accidentales que puedan afectar la integridad del entorno.
 
 ---
 
@@ -103,33 +50,9 @@ Message  : Integrity checksum changed for: /etc/passwd
 
 **Discover what applications in your environment are affected by well-known vulnerabilities.**
 
-Analiza el software instalado en los endpoints y lo cruza con bases de datos de vulnerabilidades (CVE) para identificar aplicaciones afectadas por vulnerabilidades conocidas.
+Analiza el software instalado en los endpoints y lo cruza con bases de datos de vulnerabilidades conocidas (CVE) para identificar aplicaciones desactualizadas o con fallos de seguridad. Proporciona información sobre la severidad de cada vulnerabilidad, el paquete afectado y la versión que la corrige cuando está disponible.
 
-#### ¿Cómo funciona?
-
-1. El agente Wazuh recopila el inventario de paquetes/software instalado en el endpoint.
-2. El servidor cruza ese inventario contra la base de datos de vulnerabilidades de Wazuh (alimentada por NVD, Red Hat, Debian, etc.).
-3. Se generan alertas para cada vulnerabilidad encontrada, con su CVE, severidad y versión afectada.
-
-#### Información de cada vulnerabilidad detectada
-
-| Campo | Descripción |
-|-------|-------------|
-| CVE | Identificador oficial de la vulnerabilidad |
-| Severidad | Critical / High / Medium / Low |
-| Paquete | Nombre y versión del software afectado |
-| Solución | Versión parcheada disponible (si existe) |
-| CVSS Score | Puntuación de criticidad (0.0 – 10.0) |
-
-#### Ejemplo de salida en el Dashboard
-
-```
-CVE-2024-XXXX  │  Severity: HIGH  │  CVSS: 8.1
-Package       : openssl 1.1.1t
-Fixed version : openssl 1.1.1u
-OS            : Ubuntu 22.04
-Agent         : windows-endpoint-01
-```
+Permite tener visibilidad del estado de exposición del entorno y priorizar las actualizaciones según el nivel de riesgo.
 
 ---
 
@@ -137,26 +60,7 @@ Agent         : windows-endpoint-01
 
 - Wazuh Server `>= 4.x` instalado y operativo
 - Agente Wazuh activo en los endpoints a monitorear
-- Acceso al Wazuh Dashboard (puerto 443)
-- PowerShell `>= 3.0` para agentes Windows (para el despliegue del agente)
-
----
-
-## Estructura del Repositorio
-
-```
-wazuh-modules/
-├── README.md                          # Este archivo
-├── malware-detection/
-│   ├── rules/                         # Reglas personalizadas de detección
-│   └── notes.md                       # Notas de configuración
-├── file-integrity-monitoring/
-│   ├── ossec.conf                     # Configuración de rutas monitoreadas
-│   └── notes.md
-└── vulnerability-detection/
-    ├── config/                        # Configuración del módulo
-    └── notes.md
-```
+- Acceso al Wazuh Dashboard
 
 ---
 
@@ -168,5 +72,4 @@ wazuh-modules/
 
 ---
 
-> **Laboratorio:** Wazuh SIEM — Módulos de Endpoint Security & Threat Intelligence  
 > **Entorno:** Ubuntu 22.04.4 + Agente Windows
